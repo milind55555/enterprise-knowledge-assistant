@@ -1,0 +1,8 @@
+{
+  "retrieval_hit_rate": {"min": 0.90},
+  "answer_accuracy": {"min": 0.80},
+  "faithfulness": {"min": 0.95},
+  "hallucination_rate": {"max": 0.05},
+  "abstention_accuracy": {"min": 0.90},
+  "access_leakage": {"max": 0}
+}

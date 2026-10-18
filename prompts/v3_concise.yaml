@@ -1,0 +1,15 @@
+name: v3_concise
+description: Short one or two sentence answers, strict abstention, citations. Highest precision, lowest recall.
+params:
+  top_k: 2
+  min_score: 0.10
+  max_sentences: 2
+template: |
+  Answer in at most two sentences using ONLY the context. Include the source file in brackets.
+  If the answer is not in the context, say: "I don't have enough information in the knowledge base to answer that."
+
+  Context:
+  {context}
+
+  Question: {question}
+  Answer:

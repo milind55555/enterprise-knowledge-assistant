@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enterprise Knowledge Assistant</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1c2430; --muted:#667085; --line:#e4e7ec; --accent:#2f5bea; --warn:#b54708; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f141b; --card:#171e28; --ink:#e8ecf2; --muted:#9aa5b5; --line:#2a3342; --accent:#7b9bff; --warn:#f0a35e; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; } p.sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; } .row > * { flex:1 1 180px; }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  select, input, textarea, button { width:100%; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 10px; }
+  textarea { resize: vertical; min-height: 64px; }
+  button { background:var(--accent); color:#fff; border:0; cursor:pointer; font-weight:600; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .answer { white-space:pre-wrap; }
+  .tag { display:inline-block; font-size:12px; border:1px solid var(--line); border-radius:999px; padding:1px 8px; color:var(--muted); margin-right:6px; }
+  .tag.warn { color:var(--warn); border-color:var(--warn); }
+  details { border-top:1px solid var(--line); padding:8px 0; } summary { cursor:pointer; }
+  details p { color:var(--muted); margin:6px 0 0; }
+  .err { color:var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Enterprise Knowledge Assistant</h1>
+  <p class="sub">Ask questions about company documents. Answers are grounded in the sources you are allowed to see.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="key">Sign in as (demo API key)</label>
+        <select id="key">
+          <option value="demo-employee-key">Employee</option>
+          <option value="demo-hr-key">HR</option>
+          <option value="demo-finance-key">Finance</option>
+          <option value="demo-admin-key">Admin</option>
+        </select></div>
+      <div><label for="prompt">Prompt version</label><select id="prompt"></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label for="q">Question</label>
+    <textarea id="q" placeholder="e.g. How many days of annual leave do I get?"></textarea>
+    <div style="margin-top:10px"><button id="ask">Ask</button></div>
+  </div>
+
+  <div id="out"></div>
+  <div class="card"><strong>Documents you can access</strong><div id="docs" style="margin-top:8px"></div></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const headers = () => ({ 'Content-Type': 'application/json', 'X-API-Key': $('key').value });
+
+async function loadMeta() {
+  try {
+    const [p, d] = await Promise.all([fetch('/prompts', {headers: headers()}), fetch('/documents', {headers: headers()})]);
+    const prompts = await p.json(), docs = await d.json();
+    const cur = $('prompt').value;
+    $('prompt').innerHTML = prompts.map(x => `<option value="${esc(x.name)}" title="${esc(x.description)}">${esc(x.name)}</option>`).join('');
+    if (cur) $('prompt').value = cur; else if (prompts.some(x => x.name === 'v2_cited')) $('prompt').value = 'v2_cited';
+    $('docs').innerHTML = docs.map(x => `<span class="tag">${esc(x.title)}</span>`).join('');
+  } catch (e) { $('docs').textContent = 'Could not load documents.'; }
+}
+
+async function ask() {
+  const question = $('q').value.trim();
+  if (question.length < 3) return;
+  $('ask').disabled = true; $('out').innerHTML = '<div class="card">Thinking…</div>';
+  try {
+    const r = await fetch('/query', { method: 'POST', headers: headers(), body: JSON.stringify({ question, prompt_version: $('prompt').value }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || r.statusText);
+    const srcs = data.sources.map(s => `<details><summary>${esc(s.source)} · ${esc(s.section)} <span class="tag">score ${s.score}</span></summary><p>${esc(s.text)}</p></details>`).join('');
+    $('out').innerHTML = `<div class="card">
+      <div class="answer">${esc(data.answer)}</div>
+      <p style="margin:10px 0 6px">${data.abstained ? '<span class="tag warn">no answer found</span>' : ''}<span class="tag">${esc(data.prompt_version)}</span><span class="tag">${data.latency_ms} ms</span></p>
+      ${srcs}</div>`;
+  } catch (e) { $('out').innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+  $('ask').disabled = false;
+}
+$('ask').onclick = ask;
+$('q').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
+$('key').onchange = loadMeta;
+loadMeta();
+</script>
+</body>
+</html>

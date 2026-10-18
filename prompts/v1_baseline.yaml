@@ -1,0 +1,15 @@
+name: v1_baseline
+description: Plain "answer from the context" prompt. No citation or abstention rules beyond the basics.
+params:
+  top_k: 3
+  min_score: 0.0
+  max_sentences: 3
+template: |
+  You are a helpful assistant for company employees.
+  Use the context below to answer the question.
+
+  Context:
+  {context}
+
+  Question: {question}
+  Answer:

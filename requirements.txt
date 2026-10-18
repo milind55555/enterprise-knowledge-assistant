@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+numpy>=1.26
+faiss-cpu>=1.8
+pypdf>=4.0
+PyYAML>=6.0
+pydantic>=2.6
+langchain-core>=0.3
+langchain-text-splitters>=0.3
+langchain-openai>=0.2
